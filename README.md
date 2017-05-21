@@ -8,4 +8,4 @@ Start application using python:
     
 And then see results with Tensorboard:
 
-   $> tensorboard --logdir==/tmp/neural_test 
+    $> tensorboard --logdir==/tmp/neural_test 
