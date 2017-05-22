@@ -11,14 +11,16 @@ import argparse
 import sys
 
 import tensorflow as tf
+import time
 
 from tensorflow.examples.tutorials.mnist import input_data
 
 FLAGS = None
 
 
-def train(data, optimizer, name):
-    print(name + ':')
+def train(data, optimizer, name, timing=False):
+    if not timing:
+        print(name + ':')
 
     graph = tf.Graph()
 
@@ -48,18 +50,24 @@ def train(data, optimizer, name):
         writer = tf.summary.FileWriter(FLAGS.log_dir + '/' + name)
         tf.global_variables_initializer().run()
 
+        t0 = time.time()
         # Trenowanie sieci
         for i in range(1000):
-            if i % 10 == 0:
+            if not timing and i % 10 == 0:
                 summary, acc = sess.run([merged, accuracy], feed_dict={x: data.test.images, y_: data.test.labels})
-                writer.add_summary(summary, i)
+                if not timing:
+                    writer.add_summary(summary, i)
                 print('Accuracy at step %s: %s' % (i, acc))
             else:
                 batch_xs, batch_ys = data.train.next_batch(100)  # pobieranie mini-pakietu danych
                 summary, _ = sess.run([merged, train_step], feed_dict={x: batch_xs, y_: batch_ys})
-                writer.add_summary(summary, i)
+                if not timing:
+                    writer.add_summary(summary, i)
+        t1 = time.time()
 
         sess.close()
+
+        return t1 - t0
 
 
 def main(_):
@@ -82,6 +90,17 @@ def main(_):
 
     for name, optimizer in optimizers.items():
         train(mnist, optimizer, name)
+
+    results = {}
+    for name, optimizer in optimizers.items():
+        total = 0
+        for _ in range(10):
+            total += train(mnist, optimizer, name, True)
+        avg = total / 10
+        results[name] = avg
+
+    for name, avg in results.items():
+        print(name + ': ' + '%.2f' % avg + ' s')
 
 
 if __name__ == '__main__':
