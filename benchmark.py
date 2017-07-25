@@ -84,7 +84,7 @@ def main(_):
                   'momentum': tf.train.MomentumOptimizer(learning_rate=lr, momentum=0.9, use_nesterov=False),
                   'nesterov': tf.train.MomentumOptimizer(learning_rate=lr, momentum=0.9, use_nesterov=True),
                   'adagrad': tf.train.AdagradOptimizer(lr),
-                  'adadelta': tf.train.AdadeltaOptimizer(lr),
+                  'adadelta': tf.train.AdadeltaOptimizer(1.0),
                   'rmsprop': tf.train.RMSPropOptimizer(lr),
                   'adam': tf.train.AdamOptimizer(lr)}
 

@@ -1,6 +1,4 @@
-# Daniel Zduniak
-
-"""Przeuczenie
+"""Sieć neuronowa z warstwą ukrytą
 """
 
 from __future__ import absolute_import
@@ -18,20 +16,18 @@ from tensorflow.examples.tutorials.mnist import input_data
 FLAGS = None
 
 
-def train(data, optimizer, beta=0.0):
-    images = data.train.images[0:1000]
-    labels = data.train.labels[0:1000]
-
+def train(data, optimizer, dropout=1.0):
     graph = tf.Graph()
 
     with graph.as_default():
         # Tworzenie modelu sieci neuronowej
         x = tf.placeholder(tf.float32, [None, 784])  # wejście sieci
 
-        num_hidden = 30  # liczba neuronów warstwy ukrytej
+        num_hidden = 1024  # liczba neuronów warstwy ukrytej
         hW = tf.Variable(tf.truncated_normal([784, num_hidden], stddev=0.1))  # wagi warstwy ukrytej
         hb = tf.Variable(tf.constant(0.1, shape=[num_hidden]))  # wartości progowe warstwy ukrytej
         h = tf.nn.relu(tf.add(tf.matmul(x, hW), hb))
+        h = tf.nn.dropout(h, keep_prob=dropout)
 
         oW = tf.Variable(tf.zeros([num_hidden, 10]))  # wagi warstwy wyjściowej
         ob = tf.Variable(tf.zeros([10]))  # wartości progowe warstwy wyjściowej
@@ -41,13 +37,7 @@ def train(data, optimizer, beta=0.0):
         # Określenie funckji kosztu i wybór optymizatora
         y_ = tf.placeholder(tf.float32, [None, 10])
 
-        cost = tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y)
-        # regularizer = tf.nn.l2_loss(hW) + tf.nn.l2_loss(oW)
-        regularizer = tf.contrib.layers.l2_regularizer(
-            scale=beta, scope=None
-        )
-        regularization_penalty = tf.contrib.layers.apply_regularization(regularizer, [hW, oW])
-        cost = tf.reduce_mean(cost + regularization_penalty)
+        cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(labels=y_, logits=y))
 
         # Dokładność sieci neuronowej
         correct_prediction = tf.equal(tf.argmax(y, 1), tf.argmax(y_, 1))
@@ -64,16 +54,20 @@ def train(data, optimizer, beta=0.0):
         loss = []
 
         # Trenowanie sieci
-        for i in range(500):
-            ls, _ = sess.run([cost, train_step], feed_dict={x: images, y_: labels})
-            steps.append(i)
-            acc = sess.run(accuracy, feed_dict={x: images, y_: labels})
-            print('Training set accuracy at step %s: %s' % (i, acc))
-            train_accuracy.append(acc)
-            acc = sess.run(accuracy, feed_dict={x: data.test.images, y_: data.test.labels})
-            print('Testing set accuracy at step %s: %s' % (i, acc))
-            test_accuracy.append(acc)
-            loss.append(ls)
+        for i in range(2000):
+            batch_xs, batch_ys = data.train.next_batch(100)  # pobieranie mini-pakietu danych
+            ls, _ = sess.run([cost, train_step], feed_dict={x: batch_xs, y_: batch_ys})
+
+            if i % 10 == 0:
+                steps.append(i)
+                loss.append(ls)
+                acc = sess.run(accuracy, feed_dict={x: data.train.images, y_: data.train.labels})
+                print('Training set accuracy at step %s: %s' % (i, acc))
+                train_accuracy.append(acc)
+
+                acc = sess.run(accuracy, feed_dict={x: data.test.images, y_: data.test.labels})
+                print('Testing set accuracy at step %s: %s' % (i, acc))
+                test_accuracy.append(acc)
 
     sess.close()
 
@@ -87,21 +81,14 @@ def main(_):
     lr = FLAGS.learning_rate
 
     results = train(mnist, tf.train.AdamOptimizer(lr))
-    plt.plot(results['steps'], [x * 100 for x in results['train']], 'r')
-    plt.plot(results['steps'], [x * 100 for x in results['test']], 'g')
+    plt.plot(results['steps'], [x * 100 for x in results['train']], 'pink')
+    plt.plot(results['steps'], [x * 100 for x in results['test']], 'y')
     plt.xlabel('iteracja')
     plt.ylabel('dokładność [%]')
-
-    results2 = train(mnist, tf.train.AdamOptimizer(lr), beta=0.02)
-    print('Accuracy without regularization: %.2f%%, with regularization: %.2f%%' %
-          (results['test'][-1] * 100, results2['test'][-1] * 100))
-    plt.plot(results2['steps'], [x * 100 for x in results2['train']], 'pink')
-    plt.plot(results2['steps'], [x * 100 for x in results2['test']], 'y')
     plt.ylim([60, 110])
 
     plt.figure()
     plt.plot(results['steps'], results['loss'])
-    plt.plot(results['steps'], results2['loss'])
     plt.xlabel('iteracja')
     plt.ylabel('koszt')
     plt.show()
