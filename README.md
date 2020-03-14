@@ -1,4 +1,4 @@
-# Optimizers-benchmark
+# optimizers-benchmark
 
 Application testing performance of various gradient descent optimizers.
 
